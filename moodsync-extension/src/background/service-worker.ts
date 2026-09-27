@@ -3,13 +3,25 @@
 
 /// <reference types="chrome" />
 
-const BACKEND_URL = 'https://moodsync-oiq2.onrender.com';
+const RENDER_BACKEND_URL = 'https://moodsync-oiq2.onrender.com';
+const LOCAL_BACKEND_URL = 'http://127.0.0.1:3001';
+
+async function getActiveBackendUrl(): Promise<string> {
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 2000);
+    const res = await fetch(`${RENDER_BACKEND_URL}/health`, { signal: controller.signal });
+    clearTimeout(timeout);
+    if (res.ok) return RENDER_BACKEND_URL;
+  } catch {}
+  return LOCAL_BACKEND_URL;
+}
 
 // Listen for messages from popup or options page
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   switch (message.type) {
     case 'LOGIN':
-      handleLogin()
+      handleLogin(message.backendUrl)
         .then((res) => sendResponse(res))
         .catch((err) => sendResponse({ success: false, error: String(err) }));
       return true; // Keep message channel open for async response
@@ -45,12 +57,14 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
 /**
  * Handle user login via chrome.identity or opening an auth tab
  */
-async function handleLogin(): Promise<{ success: boolean; token?: string; error?: string }> {
+async function handleLogin(providedUrl?: string): Promise<{ success: boolean; token?: string; error?: string }> {
   try {
+    const backend = providedUrl || await getActiveBackendUrl();
+    const authUrl = `${backend}/auth/login`;
+
     // Check if chrome.identity is available
     if (chrome.identity && chrome.identity.launchWebAuthFlow) {
       try {
-        const authUrl = `${BACKEND_URL}/auth/login`;
         const redirectUrl = await chrome.identity.launchWebAuthFlow({
           url: authUrl,
           interactive: true,
@@ -70,7 +84,7 @@ async function handleLogin(): Promise<{ success: boolean; token?: string; error?
     }
 
     // Fallback: Open auth tab
-    await chrome.tabs.create({ url: `${BACKEND_URL}/auth/login` });
+    await chrome.tabs.create({ url: authUrl });
     return { success: true, error: 'Tab opened for Spotify authentication' };
   } catch (error: any) {
     return { success: false, error: error.message || 'Login flow failed' };
@@ -109,9 +123,10 @@ async function getSessionToken(): Promise<string | null> {
  */
 async function handleLogout(): Promise<{ success: boolean }> {
   try {
+    const backend = await getActiveBackendUrl();
     const token = await getSessionToken();
     if (token) {
-      await fetch(`${BACKEND_URL}/auth/logout`, {
+      await fetch(`${backend}/auth/logout`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,

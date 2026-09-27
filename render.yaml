@@ -1,0 +1,7 @@
+services:
+  - type: web
+    name: moodsync-backend
+    env: node
+    plan: free
+    buildCommand: npm --prefix moodsync-backend install && npm --prefix moodsync-backend run build
+    startCommand: npm --prefix moodsync-backend start

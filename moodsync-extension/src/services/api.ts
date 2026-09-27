@@ -1,7 +1,49 @@
 // MoodSync — API Service
 // HTTP client for all extension ↔ backend communication
 
-export const BACKEND_URL = 'https://moodsync-oiq2.onrender.com';
+export const RENDER_URL = 'https://moodsync-oiq2.onrender.com';
+export const LOCAL_URL = 'http://127.0.0.1:3001';
+export const BACKEND_URL = RENDER_URL;
+
+let activeBackend: string | null = null;
+let lastCheckTime = 0;
+
+export async function getBackendUrl(): Promise<string> {
+  const now = Date.now();
+  if (activeBackend && now - lastCheckTime < 20000) {
+    return activeBackend;
+  }
+
+  // 1. If Render is alive and serving healthy responses, use Render
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 2000);
+    const res = await fetch(`${RENDER_URL}/health`, { signal: controller.signal });
+    clearTimeout(timeout);
+    if (res.ok) {
+      activeBackend = RENDER_URL;
+      lastCheckTime = now;
+      return RENDER_URL;
+    }
+  } catch {}
+
+  // 2. Fall back to local server
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 1000);
+    const res = await fetch(`${LOCAL_URL}/health`, { signal: controller.signal });
+    clearTimeout(timeout);
+    if (res.ok) {
+      activeBackend = LOCAL_URL;
+      lastCheckTime = now;
+      return LOCAL_URL;
+    }
+  } catch {}
+
+  activeBackend = LOCAL_URL;
+  lastCheckTime = now;
+  return LOCAL_URL;
+}
 
 export async function getSessionToken(): Promise<string | null> {
   // Check chrome.storage.session first
@@ -26,16 +68,19 @@ export async function getSessionToken(): Promise<string | null> {
     if (local) return local;
   } catch {}
 
-  // Auto-sync with backend if an active session exists (Render cloud or local)
+  // Auto-sync with backend if an active session exists (check local then Render)
   try {
     const endpoints = [
-      `${BACKEND_URL}/auth/latest-session`,
-      'http://127.0.0.1:3001/auth/latest-session',
+      `${LOCAL_URL}/auth/latest-session`,
       'http://localhost:3001/auth/latest-session',
+      `${RENDER_URL}/auth/latest-session`,
     ];
     for (const ep of endpoints) {
       try {
-        const res = await fetch(ep);
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 1500);
+        const res = await fetch(ep, { signal: controller.signal });
+        clearTimeout(timeout);
         if (res.ok) {
           const data = await res.json();
           if (data.sessionToken) {
@@ -94,8 +139,9 @@ async function authHeaders(): Promise<HeadersInit> {
  * GET /me — fetch user profile + Premium status
  */
 export async function fetchProfile() {
+  const backend = await getBackendUrl();
   const headers = await authHeaders();
-  const res = await fetch(`${BACKEND_URL}/me`, { headers });
+  const res = await fetch(`${backend}/me`, { headers });
   if (!res.ok) {
     const errorJson = await res.json().catch(() => ({}));
     throw new Error(errorJson.error || `Profile fetch failed with status ${res.status}`);
@@ -107,8 +153,9 @@ export async function fetchProfile() {
  * POST /mood/generate — run the mood-to-playlist pipeline
  */
 export async function generatePlaylist(moodText: string) {
+  const backend = await getBackendUrl();
   const headers = await authHeaders();
-  const res = await fetch(`${BACKEND_URL}/mood/generate`, {
+  const res = await fetch(`${backend}/mood/generate`, {
     method: 'POST',
     headers,
     body: JSON.stringify({ moodText }),
@@ -127,8 +174,9 @@ export async function generatePlaylist(moodText: string) {
  * POST /playlist/save — persist a generated playlist
  */
 export async function savePlaylist(trackUris: string[], name?: string) {
+  const backend = await getBackendUrl();
   const headers = await authHeaders();
-  const res = await fetch(`${BACKEND_URL}/playlist/save`, {
+  const res = await fetch(`${backend}/playlist/save`, {
     method: 'POST',
     headers,
     body: JSON.stringify({ trackUris, name }),
@@ -145,8 +193,9 @@ export async function savePlaylist(trackUris: string[], name?: string) {
  * POST /player/queue-next — queue a track (Premium only)
  */
 export async function queueNext(trackUri: string) {
+  const backend = await getBackendUrl();
   const headers = await authHeaders();
-  const res = await fetch(`${BACKEND_URL}/player/queue-next`, {
+  const res = await fetch(`${backend}/player/queue-next`, {
     method: 'POST',
     headers,
     body: JSON.stringify({ trackUri }),

@@ -1,0 +1,9 @@
+{
+  "name": "moodsync-root",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "build": "npm --prefix moodsync-backend install && npm --prefix moodsync-backend run build",
+    "start": "npm --prefix moodsync-backend start"
+  }
+}

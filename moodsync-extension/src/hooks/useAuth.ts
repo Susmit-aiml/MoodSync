@@ -3,7 +3,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { UserProfile } from '../types/index';
-import { fetchProfile, clearSessionToken, setSessionToken, getSessionToken, BACKEND_URL } from '../services/api';
+import { fetchProfile, clearSessionToken, setSessionToken, getSessionToken, getBackendUrl } from '../services/api';
 
 export function useAuth() {
   const [user, setUser] = useState<UserProfile | null>(null);
@@ -55,10 +55,12 @@ export function useAuth() {
     setIsLoggingIn(true);
     setError(null);
 
+    const backend = await getBackendUrl();
+
     // Try through Chrome extension service worker
     if (typeof chrome !== 'undefined' && chrome.runtime?.sendMessage) {
       try {
-        const response = await chrome.runtime.sendMessage({ type: 'LOGIN' });
+        const response = await chrome.runtime.sendMessage({ type: 'LOGIN', backendUrl: backend });
         if (response?.success && response.token) {
           await setSessionToken(response.token);
           await checkSession();
@@ -71,7 +73,7 @@ export function useAuth() {
     }
 
     // Direct browser tab fallback (works everywhere, including unpacked & local preview)
-    const loginUrl = `${BACKEND_URL}/auth/login`;
+    const loginUrl = `${backend}/auth/login`;
     if (typeof chrome !== 'undefined' && chrome.tabs?.create) {
       chrome.tabs.create({ url: loginUrl });
     } else {
