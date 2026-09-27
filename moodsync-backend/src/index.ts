@@ -135,7 +135,7 @@ async function start() {
     });
   });
 
-  server.listen(PORT, () => {
+  server.listen(Number(PORT), '0.0.0.0', () => {
     console.log(`🚀 MoodSync backend running (Dual HTTP & HTTPS) on port ${PORT}`);
     console.log(`   - HTTP Auth URL:   http://localhost:${PORT}/auth/login`);
     console.log(`   - HTTPS Auth URL:  https://localhost:${PORT}/auth/login`);
