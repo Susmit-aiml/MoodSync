@@ -1,7 +1,7 @@
 // MoodSync — API Service
 // HTTP client for all extension ↔ backend communication
 
-const BACKEND_URL = 'http://localhost:3001';
+export const BACKEND_URL = 'https://moodsync-oiq2.onrender.com';
 
 export async function getSessionToken(): Promise<string | null> {
   // Check chrome.storage.session first
@@ -26,9 +26,13 @@ export async function getSessionToken(): Promise<string | null> {
     if (local) return local;
   } catch {}
 
-  // Auto-sync with backend if an active session exists
+  // Auto-sync with backend if an active session exists (Render cloud or local)
   try {
-    const endpoints = [`${BACKEND_URL}/auth/latest-session`, 'http://127.0.0.1:3001/auth/latest-session'];
+    const endpoints = [
+      `${BACKEND_URL}/auth/latest-session`,
+      'http://127.0.0.1:3001/auth/latest-session',
+      'http://localhost:3001/auth/latest-session',
+    ];
     for (const ep of endpoints) {
       try {
         const res = await fetch(ep);

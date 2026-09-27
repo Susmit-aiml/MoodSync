@@ -9,9 +9,10 @@
     "identity"
   ],
   "host_permissions": [
+    "https://moodsync-oiq2.onrender.com/*",
+    "https://*.onrender.com/*",
     "http://localhost:3001/*",
-    "http://127.0.0.1:3001/*",
-    "https://*.moodsync-api.com/*"
+    "http://127.0.0.1:3001/*"
   ],
   "action": {
     "default_popup": "index.html",

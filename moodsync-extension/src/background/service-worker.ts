@@ -3,7 +3,7 @@
 
 /// <reference types="chrome" />
 
-const BACKEND_URL = 'http://localhost:3001';
+const BACKEND_URL = 'https://moodsync-oiq2.onrender.com';
 
 // Listen for messages from popup or options page
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {

@@ -3,9 +3,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { UserProfile } from '../types/index';
-import { fetchProfile, clearSessionToken, setSessionToken, getSessionToken } from '../services/api';
-
-const BACKEND_URL = 'http://localhost:3001';
+import { fetchProfile, clearSessionToken, setSessionToken, getSessionToken, BACKEND_URL } from '../services/api';
 
 export function useAuth() {
   const [user, setUser] = useState<UserProfile | null>(null);
