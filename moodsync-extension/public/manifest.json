@@ -1,0 +1,33 @@
+{
+  "manifest_version": 3,
+  "name": "MoodSync — AI Spotify Playlist Generator",
+  "short_name": "MoodSync",
+  "version": "1.0.0",
+  "description": "Describe your mood or listening vibe in plain English, get a real playable Spotify playlist in seconds. Powered by AI.",
+  "permissions": [
+    "storage",
+    "identity"
+  ],
+  "host_permissions": [
+    "http://localhost:3001/*",
+    "http://127.0.0.1:3001/*",
+    "https://*.moodsync-api.com/*"
+  ],
+  "action": {
+    "default_popup": "index.html",
+    "default_icon": {
+      "16": "icons/icon-16.png",
+      "48": "icons/icon-48.png",
+      "128": "icons/icon-128.png"
+    }
+  },
+  "background": {
+    "service_worker": "service-worker.js",
+    "type": "module"
+  },
+  "icons": {
+    "16": "icons/icon-16.png",
+    "48": "icons/icon-48.png",
+    "128": "icons/icon-128.png"
+  }
+}

@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Privacy Policy — MoodSync</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #0a0d14;
+      --card-bg: #131823;
+      --border: rgba(255, 255, 255, 0.08);
+      --green: #1DB954;
+      --text: #f3f4f6;
+      --muted: #9ca3af;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Plus Jakarta Sans', -apple-system, sans-serif;
+      line-height: 1.6;
+      padding: 40px 20px;
+    }
+    .container {
+      max-width: 760px;
+      margin: 0 auto;
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 40px;
+      box-shadow: 0 20px 40px rgba(0,0,0,0.5);
+    }
+    .header-logo {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 24px;
+    }
+    .logo-badge {
+      width: 40px;
+      height: 40px;
+      background: var(--green);
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+      color: #000;
+    }
+    h1 { font-size: 28px; font-weight: 800; color: #fff; margin-bottom: 6px; }
+    .updated { color: var(--muted); font-size: 13px; margin-bottom: 30px; }
+    h2 { font-size: 18px; font-weight: 700; color: #fff; margin-top: 28px; margin-bottom: 12px; border-bottom: 1px solid var(--border); padding-bottom: 6px; }
+    p, ul { color: var(--muted); font-size: 14px; margin-bottom: 14px; }
+    ul { padding-left: 20px; }
+    li { margin-bottom: 6px; }
+    strong { color: var(--text); }
+    .highlight-box {
+      background: rgba(29, 185, 84, 0.08);
+      border: 1px solid rgba(29, 185, 84, 0.2);
+      border-radius: 8px;
+      padding: 16px;
+      margin: 20px 0;
+      color: #d1fae5;
+      font-size: 13px;
+    }
+    a { color: var(--green); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header-logo">
+      <div class="logo-badge">🎵</div>
+      <div>
+        <h1>MoodSync Privacy Policy</h1>
+        <div class="updated">Effective Date: September 27, 2026 · Version 1.0</div>
+      </div>
+    </div>
+
+    <div class="highlight-box">
+      <strong>Summary:</strong> MoodSync is a single-purpose Chrome Extension that translates natural language mood descriptions into Spotify playlists. We do not sell your data, track your browsing history, inject advertisements, or access personal messages. All credentials are encrypted at rest with AES-256.
+    </div>
+
+    <h2>1. Information We Collect and Receive</h2>
+    <p>When you use MoodSync, we access only the minimal information required to provide playlist generation:</p>
+    <ul>
+      <li><strong>Spotify Profile Information:</strong> Your Spotify display name, user ID, and subscription tier (Free vs. Premium). Used to identify your account and create playlists on your behalf.</li>
+      <li><strong>Natural Language Mood Text:</strong> The text descriptions you type into the extension (e.g. "rainy evening lofi"). This is sent to our backend to generate musical anchors.</li>
+      <li><strong>Spotify OAuth Tokens:</strong> Short-lived access tokens and refresh tokens received during OAuth consent. These are <strong>AES-256 encrypted</strong> on our server and never exposed in browser extension code.</li>
+      <li><strong>Playback State:</strong> If you use the "Queue Next" button, MoodSync checks if you have an active Spotify player device.</li>
+    </ul>
+
+    <h2>2. What We DO NOT Collect</h2>
+    <ul>
+      <li>❌ We do not collect or monitor your web browsing history, active tabs, or bookmarks.</li>
+      <li>❌ We do not collect your password (authentication occurs directly on Spotify's official servers).</li>
+      <li>❌ We do not sell or monetize personal data in any form.</li>
+      <li>❌ We do not use third-party tracking scripts or advertising SDKs.</li>
+    </ul>
+
+    <h2>3. How Your Information Is Used</h2>
+    <ul>
+      <li>To generate search anchors (genres, artists, eras) corresponding to your mood.</li>
+      <li>To search the official Spotify Web API and curate matching tracks.</li>
+      <li>To create playlists on your authorized Spotify account.</li>
+      <li>To queue tracks on your active Spotify playback device when requested.</li>
+    </ul>
+
+    <h2>4. Data Storage and Security</h2>
+    <p>
+      Spotify access and refresh tokens are encrypted at rest using AES-256-GCM. The browser extension only receives an opaque, short-lived session token stored in browser session storage. Sessions automatically expire after 24 hours of inactivity.
+    </p>
+
+    <h2>5. Third-Party Services</h2>
+    <p>MoodSync interacts with the following services:</p>
+    <ul>
+      <li><strong>Spotify Web API:</strong> For account authentication, track searching, and playlist creation under Spotify's Developer Terms.</li>
+      <li><strong>AI / LLM Providers:</strong> Mood text is processed to extract genres and artists without including personal user identifiers.</li>
+    </ul>
+
+    <h2>6. User Control and Data Deletion</h2>
+    <p>You have full control over your data at all times:</p>
+    <ul>
+      <li><strong>Revoke Access:</strong> You can revoke MoodSync's permissions at any time via your <a href="https://www.spotify.com/account/apps/" target="_blank" rel="noopener">Spotify Apps Dashboard</a>.</li>
+      <li><strong>Log Out:</strong> Clicking the logout icon in the extension immediately clears your session from the browser and server.</li>
+      <li><strong>Data Deletion Request:</strong> To request deletion of your account record and stored requests, contact us at <code>support@moodsync.app</code>.</li>
+    </ul>
+
+    <h2>7. Changes to This Policy</h2>
+    <p>If we update this Privacy Policy, the revised version will be published here with an updated effective date.</p>
+
+    <h2>8. Contact Us</h2>
+    <p>If you have any questions or feedback regarding MoodSync's privacy practices, please contact us at:</p>
+    <p><strong>MoodSync Team</strong><br>Email: <code>support@moodsync.app</code></p>
+  </div>
+</body>
+</html>

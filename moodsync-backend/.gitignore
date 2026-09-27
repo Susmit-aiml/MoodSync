@@ -1,0 +1,19 @@
+# Environment variables (NEVER commit secrets!)
+.env
+.env.local
+.env.*.local
+*.env
+
+# Dependencies
+node_modules/
+
+# TypeScript compilation output
+dist/
+
+# Logs
+*.log
+npm-debug.log*
+
+# System
+.DS_Store
+Thumbs.db

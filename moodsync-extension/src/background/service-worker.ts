@@ -1,0 +1,133 @@
+// MoodSync — Background Service Worker (Manifest V3)
+// Coordinates authentication flow, identity management, and session tokens
+
+/// <reference types="chrome" />
+
+const BACKEND_URL = 'http://localhost:3001';
+
+// Listen for messages from popup or options page
+chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+  switch (message.type) {
+    case 'LOGIN':
+      handleLogin()
+        .then((res) => sendResponse(res))
+        .catch((err) => sendResponse({ success: false, error: String(err) }));
+      return true; // Keep message channel open for async response
+
+    case 'GET_SESSION':
+      getSessionToken()
+        .then((token) => sendResponse({ token }))
+        .catch(() => sendResponse({ token: null }));
+      return true;
+
+    case 'LOGOUT':
+      handleLogout()
+        .then((res) => sendResponse(res))
+        .catch(() => sendResponse({ success: false }));
+      return true;
+
+    case 'SAVE_SESSION':
+      if (message.token) {
+        saveSessionToken(message.token)
+          .then(() => sendResponse({ success: true }))
+          .catch((err) => sendResponse({ success: false, error: String(err) }));
+        return true;
+      }
+      sendResponse({ success: false, error: 'No token provided' });
+      return false;
+
+    default:
+      sendResponse({ error: 'Unknown message type' });
+      return false;
+  }
+});
+
+/**
+ * Handle user login via chrome.identity or opening an auth tab
+ */
+async function handleLogin(): Promise<{ success: boolean; token?: string; error?: string }> {
+  try {
+    // Check if chrome.identity is available
+    if (chrome.identity && chrome.identity.launchWebAuthFlow) {
+      try {
+        const authUrl = `${BACKEND_URL}/auth/login`;
+        const redirectUrl = await chrome.identity.launchWebAuthFlow({
+          url: authUrl,
+          interactive: true,
+        });
+
+        if (redirectUrl) {
+          const urlObj = new URL(redirectUrl);
+          const token = urlObj.searchParams.get('token');
+          if (token) {
+            await saveSessionToken(token);
+            return { success: true, token };
+          }
+        }
+      } catch (flowError) {
+        console.warn('launchWebAuthFlow did not complete or was closed, falling back to tab:', flowError);
+      }
+    }
+
+    // Fallback: Open auth tab
+    await chrome.tabs.create({ url: `${BACKEND_URL}/auth/login` });
+    return { success: true, error: 'Tab opened for Spotify authentication' };
+  } catch (error: any) {
+    return { success: false, error: error.message || 'Login flow failed' };
+  }
+}
+
+/**
+ * Store session token in both session and local storage
+ */
+async function saveSessionToken(token: string): Promise<void> {
+  if (chrome.storage?.session) {
+    await chrome.storage.session.set({ sessionToken: token });
+  }
+  if (chrome.storage?.local) {
+    await chrome.storage.local.set({ sessionToken: token });
+  }
+}
+
+/**
+ * Retrieve session token
+ */
+async function getSessionToken(): Promise<string | null> {
+  if (chrome.storage?.session) {
+    const res = await chrome.storage.session.get('sessionToken');
+    if (res.sessionToken) return res.sessionToken;
+  }
+  if (chrome.storage?.local) {
+    const res = await chrome.storage.local.get('sessionToken');
+    if (res.sessionToken) return res.sessionToken;
+  }
+  return null;
+}
+
+/**
+ * Clear session and notify backend
+ */
+async function handleLogout(): Promise<{ success: boolean }> {
+  try {
+    const token = await getSessionToken();
+    if (token) {
+      await fetch(`${BACKEND_URL}/auth/logout`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      }).catch(() => {});
+    }
+  } finally {
+    if (chrome.storage?.session) {
+      await chrome.storage.session.remove('sessionToken').catch(() => {});
+    }
+    if (chrome.storage?.local) {
+      await chrome.storage.local.remove('sessionToken').catch(() => {});
+    }
+  }
+  return { success: true };
+}
+
+export {};
