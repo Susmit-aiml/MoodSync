@@ -9,7 +9,7 @@
     "identity"
   ],
   "host_permissions": [
-    "https://moodsync-oiq2.onrender.com/*",
+    "https://moodsync-e4q2.onrender.com/*",
     "https://*.onrender.com/*",
     "http://localhost:3001/*",
     "http://127.0.0.1:3001/*"

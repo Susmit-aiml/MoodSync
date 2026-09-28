@@ -1,48 +1,22 @@
 // MoodSync — API Service
 // HTTP client for all extension ↔ backend communication
 
-export const RENDER_URL = 'https://moodsync-oiq2.onrender.com';
+export const RENDER_URL = 'https://moodsync-e4q2.onrender.com';
 export const LOCAL_URL = 'http://127.0.0.1:3001';
 export const BACKEND_URL = RENDER_URL;
 
-let activeBackend: string | null = null;
-let lastCheckTime = 0;
+let activeBackend: string = RENDER_URL;
 
+/**
+ * Returns the active backend URL immediately with zero artificial buffering.
+ * Defaults to the production Render backend.
+ */
 export async function getBackendUrl(): Promise<string> {
-  const now = Date.now();
-  if (activeBackend && now - lastCheckTime < 20000) {
-    return activeBackend;
-  }
+  return activeBackend || RENDER_URL;
+}
 
-  // 1. If Render is alive and serving healthy responses, use Render
-  try {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 2000);
-    const res = await fetch(`${RENDER_URL}/health`, { signal: controller.signal });
-    clearTimeout(timeout);
-    if (res.ok) {
-      activeBackend = RENDER_URL;
-      lastCheckTime = now;
-      return RENDER_URL;
-    }
-  } catch {}
-
-  // 2. Fall back to local server
-  try {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 1000);
-    const res = await fetch(`${LOCAL_URL}/health`, { signal: controller.signal });
-    clearTimeout(timeout);
-    if (res.ok) {
-      activeBackend = LOCAL_URL;
-      lastCheckTime = now;
-      return LOCAL_URL;
-    }
-  } catch {}
-
-  activeBackend = LOCAL_URL;
-  lastCheckTime = now;
-  return LOCAL_URL;
+export function setBackendUrl(url: string): void {
+  activeBackend = url;
 }
 
 export async function getSessionToken(): Promise<string | null> {
@@ -68,27 +42,18 @@ export async function getSessionToken(): Promise<string | null> {
     if (local) return local;
   } catch {}
 
-  // Auto-sync with backend if an active session exists (check local then Render)
+  // Auto-sync with production Render backend if an active session exists
   try {
-    const endpoints = [
-      `${LOCAL_URL}/auth/latest-session`,
-      'http://localhost:3001/auth/latest-session',
-      `${RENDER_URL}/auth/latest-session`,
-    ];
-    for (const ep of endpoints) {
-      try {
-        const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), 1500);
-        const res = await fetch(ep, { signal: controller.signal });
-        clearTimeout(timeout);
-        if (res.ok) {
-          const data = await res.json();
-          if (data.sessionToken) {
-            await setSessionToken(data.sessionToken);
-            return data.sessionToken;
-          }
-        }
-      } catch {}
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 2000);
+    const res = await fetch(`${RENDER_URL}/auth/latest-session`, { signal: controller.signal });
+    clearTimeout(timeout);
+    if (res.ok) {
+      const data = await res.json();
+      if (data.sessionToken) {
+        await setSessionToken(data.sessionToken);
+        return data.sessionToken;
+      }
     }
   } catch {}
 

@@ -28,50 +28,70 @@ Rules:
 Never wrap the output in markdown backticks or commentary. Only output the raw JSON object.`;
 
 /**
- * Call Google Gemini API to extract mood anchors
+ * Call Google Gemini API to extract mood anchors with ultra-fast latency & failover
  */
 async function callGemini(apiKey: string, moodText: string, contextInfo: string): Promise<MoodAnchors | null> {
   const prompt = `User listening intent: "${moodText}".${contextInfo}`;
+  const cleanKey = apiKey.trim().replace(/^['"]|['"]$/g, '');
 
-  // 1. Try modern @google/genai SDK
+  // Models ordered by speed and stability:
+  // gemini-3.5-flash-lite (1.4s) -> gemini-3.1-flash-lite (2.6s) -> gemini-3.8-flash (fallback)
+  const modelsToTry = [
+    'gemini-3.5-flash-lite',
+    'gemini-3.1-flash-lite',
+    'gemini-3.8-flash',
+  ];
+
+  // 1. Try modern @google/genai SDK across candidate models
   try {
-    const ai = new GoogleGenAI({ apiKey });
-    const response = await ai.models.generateContent({
-      model: 'gemini-3.5-flash',
-      contents: prompt,
-      config: {
-        systemInstruction: SYSTEM_PROMPT,
-        responseMimeType: 'application/json',
-      },
-    });
+    const ai = new GoogleGenAI({ apiKey: cleanKey });
 
-    const text = response.text?.trim();
-    if (text) {
-      const cleaned = text.replace(/^```json/i, '').replace(/```$/i, '').trim();
-      const parsed = JSON.parse(cleaned);
-      if (validateAnchors(parsed)) {
-        return parsed;
+    for (const model of modelsToTry) {
+      try {
+        const response = await Promise.race([
+          ai.models.generateContent({
+            model,
+            contents: prompt,
+            config: {
+              systemInstruction: SYSTEM_PROMPT,
+              responseMimeType: 'application/json',
+              temperature: 0.7,
+            },
+          }),
+          new Promise<never>((_, reject) =>
+            setTimeout(() => reject(new Error(`Timeout on ${model}`)), 6000)
+          ),
+        ]);
+
+        const text = response.text?.trim();
+        if (text) {
+          const cleaned = text.replace(/^```json/i, '').replace(/```$/i, '').trim();
+          const parsed = JSON.parse(cleaned);
+          if (validateAnchors(parsed)) {
+            console.log(`✨ Generated AI anchors via Gemini [${model}] in real-time`);
+            return parsed;
+          }
+        }
+      } catch (err: any) {
+        console.warn(`⚠️ Gemini SDK ${model} failed (${err.message || err}), trying next candidate...`);
       }
     }
   } catch (sdkErr: any) {
-    console.warn('⚠️ @google/genai SDK call error, trying Google AI REST fallback:', sdkErr.message || sdkErr);
+    console.warn('⚠️ @google/genai SDK init error, trying Google AI REST fallback:', sdkErr.message || sdkErr);
   }
 
-  // 2. Direct REST Fallback to Google AI Studio
-  const candidateModels = [
-    'gemini-3.5-flash',
-    'gemini-3.1-flash-lite',
-    'gemini-3.5-flash-lite',
-    'gemini-3.8-flash',
-    'gemini-flash-latest',
-  ];
-  for (const model of candidateModels) {
+  // 2. Direct REST Fallback to Google AI Studio with 4-second timeout
+  for (const model of modelsToTry) {
     try {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 4000);
+
       const res = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
+        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${cleanKey}`,
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
+          signal: controller.signal,
           body: JSON.stringify({
             contents: [{ parts: [{ text: `${SYSTEM_PROMPT}\n\n${prompt}` }] }],
             generationConfig: {
@@ -81,6 +101,7 @@ async function callGemini(apiKey: string, moodText: string, contextInfo: string)
           }),
         }
       );
+      clearTimeout(timeout);
 
       if (res.ok) {
         const data = await res.json();
@@ -89,6 +110,7 @@ async function callGemini(apiKey: string, moodText: string, contextInfo: string)
           const cleaned = text.replace(/^```json/i, '').replace(/```$/i, '').trim();
           const parsed = JSON.parse(cleaned);
           if (validateAnchors(parsed)) {
+            console.log(`✨ Generated AI anchors via Gemini REST [${model}]`);
             return parsed;
           }
         }
@@ -106,7 +128,8 @@ async function callGemini(apiKey: string, moodText: string, contextInfo: string)
  */
 async function callClaude(apiKey: string, moodText: string, contextInfo: string): Promise<MoodAnchors | null> {
   try {
-    const anthropic = new Anthropic({ apiKey });
+    const cleanKey = apiKey.trim().replace(/^['"]|['"]$/g, '');
+    const anthropic = new Anthropic({ apiKey: cleanKey });
     const response = await anthropic.messages.create({
       model: 'claude-3-5-haiku-20241022',
       max_tokens: 300,
@@ -140,8 +163,17 @@ export async function generateAnchors(
   moodText: string,
   context?: { timeOfDay?: string; topArtists?: string[] }
 ): Promise<MoodAnchors> {
-  const geminiKey = process.env.GEMINI_API_KEY || (process.env.LLM_API_KEY?.startsWith('AIza') ? process.env.LLM_API_KEY : '');
-  const claudeKey = process.env.ANTHROPIC_API_KEY || (process.env.LLM_API_KEY?.startsWith('sk-ant') ? process.env.LLM_API_KEY : '');
+  const rawKey = (
+    process.env.GEMINI_API_KEY ||
+    (!process.env.LLM_API_KEY?.startsWith('sk-ant') ? process.env.LLM_API_KEY : '') ||
+    ''
+  ).trim().replace(/^['"]|['"]$/g, '');
+
+  const claudeKey = (
+    process.env.ANTHROPIC_API_KEY ||
+    (process.env.LLM_API_KEY?.startsWith('sk-ant') ? process.env.LLM_API_KEY : '') ||
+    ''
+  ).trim().replace(/^['"]|['"]$/g, '');
 
   let contextInfo = '';
   if (context?.timeOfDay) contextInfo += ` Current time of day: ${context.timeOfDay}.`;
@@ -150,8 +182,8 @@ export async function generateAnchors(
   }
 
   // 1. If Gemini key is detected, prioritize Gemini!
-  if (geminiKey && geminiKey.trim().length > 0 && !geminiKey.includes('your_')) {
-    const geminiAnchors = await callGemini(geminiKey, moodText, contextInfo);
+  if (rawKey && rawKey.length > 5 && !rawKey.includes('your_')) {
+    const geminiAnchors = await callGemini(rawKey, moodText, contextInfo);
     if (geminiAnchors) {
       return {
         genres: geminiAnchors.genres.slice(0, 4),

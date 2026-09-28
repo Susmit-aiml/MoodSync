@@ -17,8 +17,11 @@ export function validateEnv(): void {
     console.warn('   Ensure these are defined in .env before processing live Spotify OAuth requests.\n');
   }
 
-  if (!process.env.LLM_API_KEY) {
-    console.log('ℹ️  LLM_API_KEY not set — using built-in intelligent heuristic anchor engine.');
+  const hasLlm = process.env.GEMINI_API_KEY || process.env.LLM_API_KEY || process.env.ANTHROPIC_API_KEY;
+  if (!hasLlm) {
+    console.log('ℹ️  LLM API key not set — using built-in intelligent heuristic anchor engine.');
+  } else {
+    console.log('✨ Gemini / AI Key detected — AI mood anchor engine is ACTIVE.');
   }
 
   if (!process.env.SPOTIFY_REDIRECT_URI) {

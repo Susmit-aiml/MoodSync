@@ -3,18 +3,27 @@
 
 /// <reference types="chrome" />
 
-const RENDER_BACKEND_URL = 'https://moodsync-oiq2.onrender.com';
+const RENDER_BACKEND_URL = 'https://moodsync-e4q2.onrender.com';
 const LOCAL_BACKEND_URL = 'http://127.0.0.1:3001';
 
 async function getActiveBackendUrl(): Promise<string> {
   try {
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 2000);
+    const timeout = setTimeout(() => controller.abort(), 5000);
     const res = await fetch(`${RENDER_BACKEND_URL}/health`, { signal: controller.signal });
     clearTimeout(timeout);
     if (res.ok) return RENDER_BACKEND_URL;
   } catch {}
-  return LOCAL_BACKEND_URL;
+
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 1000);
+    const res = await fetch(`${LOCAL_BACKEND_URL}/health`, { signal: controller.signal });
+    clearTimeout(timeout);
+    if (res.ok) return LOCAL_BACKEND_URL;
+  } catch {}
+
+  return RENDER_BACKEND_URL;
 }
 
 // Listen for messages from popup or options page
