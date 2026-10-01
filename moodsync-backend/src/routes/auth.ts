@@ -47,6 +47,32 @@ const SPOTIFY_SCOPES = [
   'user-top-read',
 ].join(' ');
 
+function getEffectiveRedirectUri(req: Request): string {
+  const envUri = process.env.SPOTIFY_REDIRECT_URI;
+  const isRender = Boolean(process.env.RENDER || process.env.RENDER_EXTERNAL_URL);
+
+  // If running on Render/cloud, ensure we don't accidentally send Spotify a localhost redirect URI
+  if (isRender && envUri && (envUri.includes('localhost') || envUri.includes('127.0.0.1'))) {
+    console.warn('⚠️ SPOTIFY_REDIRECT_URI points to localhost while running on Render. Auto-switching to Render URL...');
+    if (process.env.RENDER_EXTERNAL_URL) {
+      return `${process.env.RENDER_EXTERNAL_URL.replace(/\/$/, '')}/auth/callback`;
+    }
+    const proto = req.headers['x-forwarded-proto'] || 'https';
+    const host = req.get('host');
+    return `${proto}://${host}/auth/callback`;
+  }
+
+  if (envUri) return envUri;
+
+  if (process.env.RENDER_EXTERNAL_URL) {
+    return `${process.env.RENDER_EXTERNAL_URL.replace(/\/$/, '')}/auth/callback`;
+  }
+
+  const proto = req.headers['x-forwarded-proto'] || req.protocol || 'http';
+  const host = req.get('host') || `localhost:${process.env.PORT || 3001}`;
+  return `${proto}://${host}/auth/callback`;
+}
+
 /**
  * GET /auth/login — Initiates Spotify OAuth 2.0 with PKCE
  * If query param json=true, returns { authUrl, state } for Chrome Extension identity flow
@@ -58,7 +84,7 @@ router.get('/login', (req: Request, res: Response) => {
   pkceStore.set(state, { verifier, createdAt: Date.now() });
 
   const clientId = process.env.SPOTIFY_CLIENT_ID;
-  const redirectUri = process.env.SPOTIFY_REDIRECT_URI || `http://localhost:${process.env.PORT || 3001}/auth/callback`;
+  const redirectUri = getEffectiveRedirectUri(req);
 
   if (!clientId) {
     return res.status(500).json({ error: 'SPOTIFY_CLIENT_ID is not configured in backend environment.' });
@@ -115,7 +141,7 @@ router.get('/callback', async (req: Request, res: Response) => {
   }
 
   try {
-    const redirectUri = process.env.SPOTIFY_REDIRECT_URI || `http://localhost:${process.env.PORT || 3001}/auth/callback`;
+    const redirectUri = getEffectiveRedirectUri(req);
     const tokenData = await spotify.exchangeCodeForTokens(code, codeVerifier, redirectUri);
     const profile = await spotify.getUserProfile(tokenData.access_token);
 
