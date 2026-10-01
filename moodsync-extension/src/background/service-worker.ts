@@ -154,4 +154,33 @@ async function handleLogout(): Promise<{ success: boolean }> {
   return { success: true };
 }
 
+// Auto-detect when the Spotify OAuth callback tab finishes loading
+if (typeof chrome !== 'undefined' && chrome.tabs?.onUpdated) {
+  chrome.tabs.onUpdated.addListener((_tabId, changeInfo, tab) => {
+    if (changeInfo.status === 'complete' && tab.url && (tab.url.includes('/auth/callback') || tab.url.includes('latest-session'))) {
+      try {
+        const urlObj = new URL(tab.url);
+        const urlToken = urlObj.searchParams.get('token') || (urlObj.hash.startsWith('#token=') ? urlObj.hash.slice(7) : null);
+        if (urlToken) {
+          saveSessionToken(urlToken);
+          console.log('✅ Captured session token directly from URL');
+          return;
+        }
+      } catch {}
+
+      getActiveBackendUrl().then((backend) => {
+        fetch(`${backend}/auth/latest-session`)
+          .then((res) => res.json())
+          .then((data) => {
+          if (data?.sessionToken) {
+            saveSessionToken(data.sessionToken);
+            console.log('✅ Background auto-synced session for:', data.user?.displayName);
+          }
+        })
+        .catch(() => {});
+      });
+    }
+  });
+}
+
 export {};

@@ -42,20 +42,24 @@ export async function getSessionToken(): Promise<string | null> {
     if (local) return local;
   } catch {}
 
-  // Auto-sync with production Render backend if an active session exists
-  try {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 2000);
-    const res = await fetch(`${RENDER_URL}/auth/latest-session`, { signal: controller.signal });
-    clearTimeout(timeout);
-    if (res.ok) {
-      const data = await res.json();
-      if (data.sessionToken) {
-        await setSessionToken(data.sessionToken);
-        return data.sessionToken;
+  // Auto-sync with backend if an active session exists
+  const endpoints = Array.from(new Set([activeBackend, RENDER_URL, LOCAL_URL].filter(Boolean)));
+
+  for (const endpoint of endpoints) {
+    try {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 6000);
+      const res = await fetch(`${endpoint}/auth/latest-session`, { signal: controller.signal });
+      clearTimeout(timeout);
+      if (res.ok) {
+        const data = await res.json();
+        if (data.sessionToken) {
+          await setSessionToken(data.sessionToken);
+          return data.sessionToken;
+        }
       }
-    }
-  } catch {}
+    } catch {}
+  }
 
   return null;
 }
